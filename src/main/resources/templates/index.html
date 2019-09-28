@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <link href="css/custom.css" rel="stylesheet">
+    <script src="js/vue.js"></script>
+
+    <title>Git Hub Activity</title>
+
+</head>
+<body>
+
+<div id="main">
+    <h1>Latest GitHub Events for user {{username}} </h1>
+    <p>You have {{rate_limit.rate.remaining}} requests left for today, increase this amount by
+        <a href="#">login to GitHub</a></p>
+
+    <template>
+        <div id="search-form" class="wrap">
+            <form @submit.prevent="handleSubmit" class="search-form">
+                <input v-on:keyup.enter="onEnter" v-model="username" placeholder="User..." type="search" id="username"
+                       name="username"/>
+                <button class="button">Search</button>
+            </form>
+        </div>
+    </template>
+
+    <table>
+        <thead>
+        <tr>
+            <th>Events</th>
+            <th>Received events</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td>
+                <li v-for="record in events" :key="record.id" style="display: block;">
+                    Event type {{record.type}} for repo <a :href="record.repo.url"
+                                                           target="_blank">{{record.repo.name}}</a>
+                    <ul>
+                        Commits:
+                        <li v-for="comm in record.payload.commits" :key="comm.id">
+                            <a :href="comm.url" target="_blank" class="commit">{{ comm.sha.slice(0, 10) }}</a>
+                            - <span class="message">{{ comm.message | truncate }}</span><br>
+                        </li>
+                    </ul>
+                </li>
+            </td>
+            <td>
+                <li v-for="record in received_events" :key="record.id" style="display: block;">
+                    Event type {{record.type}} for repo <a :href="record.repo.url"
+                                                           target="_blank">{{record.repo.name}}</a>
+                    {{record.payload.action}} by <span class="author"><a :href="record.actor.url" target="_blank">{{record.actor.display_login}}</a></span>
+                    at <span class="date">{{ record.created_at | formatDate }}</span>
+                </li>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+</div>
+<script type="text/javascript">
+var main = new Vue({
+
+  el: '#main',
+
+  data: {
+    username: '',
+    events: null,
+    received_events: null,
+    rate_limit: 0
+  },
+
+  created: function () {
+    this.checkRateLimit();
+  },
+
+
+  filters: {
+    truncate: function (v) {
+      var newline = v.indexOf('\n')
+      return newline > 0 ? v.slice(0, newline) : v
+    },
+    formatDate: function (v) {
+      return v.replace(/T|Z/g, ' ')
+    }
+  },
+
+  methods: {
+   checkRateLimit() {
+      var xhr = new XMLHttpRequest()
+      var self = this
+      xhr.open('GET', '/rate_limit')
+      xhr.onload = function () {
+        self.rate_limit = JSON.parse(xhr.responseText)
+      }
+      xhr.send()
+    },
+    handleSubmit() {
+        if(this.username!=''){
+          this.getEvents(this.username);
+          this.getReceivedEvents(this.username);
+          this.checkRateLimit();
+      }
+    },
+    onEnter() {
+        if(this.username!=''){
+          this.getEvents(this.username);
+          this.getReceivedEvents(this.username);
+          this.checkRateLimit();
+      }
+    },
+    getEvents: function (user) {
+      var xhr = new XMLHttpRequest()
+      var self = this
+      xhr.open('GET', '/events/?username='+user)
+      xhr.onload = function () {
+        self.events = JSON.parse(xhr.responseText)
+      }
+      xhr.send()
+    },
+    getReceivedEvents: function (user) {
+      var xhr = new XMLHttpRequest()
+      var self = this
+      xhr.open('GET', '/received_events/?username='+user)
+      xhr.onload = function () {
+        self.received_events = JSON.parse(xhr.responseText)
+      }
+      xhr.send()
+    }
+
+//  async methods could be used too 
+    // async getEvents2(user) {
+    //   try {
+    //     const response = await fetch('/events/?username='+user)
+    //     const data = await response.json()
+    //     this.events = data
+    //   } catch (error) {
+    //     // console.error(error)
+    //   }
+    // },
+    // async getReceivedEvents2(user) {
+    //   try {
+    //     const response = await fetch('/received_events/?username='+user)
+    //     const data = await response.json()
+    //     this.received_events = data
+    //   } catch (error) {
+    //     // console.error(error)
+    //   }
+    // }
+  }
+})
+
+
+</script>
+<noscript>
+    <strong>We're sorry but vue-app doesn't work properly without JavaScript enabled. Please enable it to
+        continue.</strong>
+</noscript>
+</body>
+</html>
